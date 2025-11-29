@@ -1,0 +1,416 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============= AUTHENTICATION & USERS =============
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+enum UserRole {
+  CUSTOMER // Khách hàng
+  SALES // Nhân viên bán hàng
+  ADMIN // Quản trị viên
+}
+
+model User {
+  id     String   @id @default(cuid())
+  email  String   @unique
+  name   String?
+  phone  String?
+  avatar String?
+  role   UserRole @default(CUSTOMER)
+
+  // Authentication
+  authProvider AuthProvider @default(LOCAL)
+  passwordHash String? // Null nếu đăng nhập Google
+  isVerified   Boolean      @default(false)
+
+  // OTP cho email verification (chỉ dùng khi đăng ký LOCAL)
+  otpCode   String?
+  otpExpiry DateTime?
+
+  // Customer specific
+  totalSpent    Decimal @default(0) @db.Decimal(12, 2)
+  customerNotes String? @db.Text // Ghi chú của nhân viên về khách
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  bookings Booking[]
+  reviews  Review[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// ============= TOUR MANAGEMENT =============
+
+enum TourCategory {
+  BEACH // Tour biển
+  MOUNTAIN // Tour núi
+  CITY // Tour thành phố
+  INTERNATIONAL // Tour nước ngoài
+  CULTURE // Tour văn hóa
+  ADVENTURE // Tour phiêu lưu
+}
+
+model Destination {
+  id          String  @id @default(cuid())
+  name        String // Hà Nội, Đà Nẵng, Thailand
+  slug        String  @unique
+  country     String  @default("Vietnam")
+  description String? @db.Text
+  image       String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tours Tour[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("destinations")
+}
+
+model Tour {
+  id       String       @id @default(cuid())
+  name     String
+  slug     String       @unique
+  category TourCategory
+
+  // Content
+  summary      String   @db.Text // Tổng quan ngắn
+  description  String   @db.Text // Mô tả chi tiết
+  itinerary    Json // Lịch trình chi tiết từng ngày [{day: 1, title: "", content: ""}]
+  includes     String[] // Những gì bao gồm
+  excludes     String[] // Những gì không bao gồm
+  cancellation String   @db.Text // Chính sách hoàn hủy
+
+  // Media
+  thumbnail String // Ảnh chính
+  images    String[] // Thư viện ảnh
+
+  // Duration
+  durationDays   Int // Số ngày
+  durationNights Int // Số đêm
+
+  // Pricing (giá gốc tham khảo, giá thực tế ở Departure)
+  basePriceAdult Decimal @db.Decimal(10, 2)
+  basePriceChild Decimal @db.Decimal(10, 2)
+
+  // Status
+  isActive     Boolean @default(true)
+  isFeatured   Boolean @default(false) // Tour nổi bật
+  viewCount    Int     @default(0)
+  bookingCount Int     @default(0)
+
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  departures Departure[]
+  reviews    Review[]
+
+  @@index([slug])
+  @@index([category])
+  @@index([isActive, isFeatured])
+  @@index([destinationId])
+  @@map("tours")
+}
+
+// ============= DEPARTURE & INVENTORY =============
+
+enum DepartureStatus {
+  AVAILABLE // Còn chỗ
+  FULL // Đã đầy
+  CANCELLED // Hủy chuyến
+  COMPLETED // Đã hoàn thành
+}
+
+model Departure {
+  id     String @id @default(cuid())
+  tourId String
+  tour   Tour   @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  // Schedule
+  departureDate DateTime // Ngày khởi hành
+  returnDate    DateTime // Ngày về
+
+  // Capacity
+  totalSlots     Int // Tổng số chỗ
+  bookedSlots    Int @default(0) // Số chỗ đã đặt
+  availableSlots Int // Số chỗ còn lại (computed)
+
+  // Pricing
+  priceAdult Decimal @db.Decimal(10, 2)
+  priceChild Decimal @db.Decimal(10, 2)
+
+  // Status
+  status DepartureStatus @default(AVAILABLE)
+
+  // Notes
+  notes String? @db.Text // Ghi chú nội bộ
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings Booking[]
+
+  @@index([tourId])
+  @@index([departureDate])
+  @@index([status])
+  @@map("departures")
+}
+
+// ============= BOOKING MANAGEMENT =============
+
+enum BookingStatus {
+  NEW // Mới đặt, chờ xác nhận
+  CONFIRMED // Đã xác nhận
+  DEPOSITED // Đã đặt cọc
+  PAID // Đã thanh toán đủ
+  CANCELLED // Đã hủy
+  COMPLETED // Đã hoàn thành chuyến đi
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER // Chuyển khoản
+  CREDIT_CARD // Thẻ tín dụng
+  CASH // Tiền mặt
+}
+
+model Booking {
+  id          String @id @default(cuid())
+  bookingCode String @unique // Mã đơn hàng: BK-XXXXXX
+
+  // Customer info
+  userId String? // Null nếu khách không đăng ký tài khoản
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  customerName  String // Lưu riêng để backup nếu user bị xóa
+  customerEmail String
+  customerPhone String
+
+  // Departure info
+  departureId String
+  departure   Departure @relation(fields: [departureId], references: [id], onDelete: Restrict)
+
+  // Quantity
+  adultCount  Int
+  childCount  Int
+  totalGuests Int // Tổng số người = adult + child
+
+  // Pricing
+  adultPrice Decimal @db.Decimal(10, 2) // Giá tại thời điểm đặt
+  childPrice Decimal @db.Decimal(10, 2)
+  subtotal   Decimal @db.Decimal(10, 2) // Tổng trước giảm giá
+  discount   Decimal @default(0) @db.Decimal(10, 2)
+  total      Decimal @db.Decimal(10, 2) // Tổng phải trả
+
+  // Payment
+  paymentMethod   PaymentMethod?
+  depositAmount   Decimal        @default(0) @db.Decimal(10, 2) // Số tiền đã cọc
+  paidAmount      Decimal        @default(0) @db.Decimal(10, 2) // Số tiền đã trả
+  remainingAmount Decimal        @default(0) @db.Decimal(10, 2) // Số tiền còn lại
+
+  // Coupon
+  couponCode String?
+
+  // Status
+  status BookingStatus @default(NEW)
+
+  // Notes
+  customerNotes String? @db.Text // Ghi chú của khách
+  internalNotes String? @db.Text // Ghi chú nội bộ
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  passengers Passenger[]
+  payments   Payment[]
+
+  @@index([bookingCode])
+  @@index([userId])
+  @@index([departureId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("bookings")
+}
+
+// Danh sách hành khách trong đoàn
+model Passenger {
+  id        String  @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  fullName  String
+  birthYear Int // Năm sinh (để tính tuổi mua bảo hiểm)
+  gender    String? // Nam/Nữ
+  idNumber  String? // CMND/CCCD (optional)
+
+  isChild Boolean @default(false)
+  notes   String? // Ghi chú đặc biệt (dị ứng, ăn chay...)
+
+  createdAt DateTime @default(now())
+
+  @@index([bookingId])
+  @@map("passengers")
+}
+
+// Lịch sử thanh toán
+model Payment {
+  id        String  @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  amount Decimal       @db.Decimal(10, 2)
+  method PaymentMethod
+
+  // Thông tin giao dịch
+  transactionId String? // Mã giao dịch ngân hàng
+  note          String?
+
+  paidAt    DateTime @default(now())
+  createdBy String? // ID nhân viên xác nhận (nếu thanh toán tiền mặt)
+
+  @@index([bookingId])
+  @@map("payments")
+}
+
+// ============= COUPON =============
+
+enum CouponType {
+  PERCENTAGE // Giảm theo %
+  FIXED_AMOUNT // Giảm số tiền cố định
+}
+
+model Coupon {
+  id   String @id @default(cuid())
+  code String @unique
+  name String // Tên chương trình
+
+  type  CouponType
+  value Decimal    @db.Decimal(10, 2) // 10 (%) hoặc 100000 (VNĐ)
+
+  // Điều kiện
+  minOrderValue Decimal? @db.Decimal(10, 2) // Giá trị đơn tối thiểu
+  maxDiscount   Decimal? @db.Decimal(10, 2) // Giảm tối đa (với coupon %)
+  usageLimit    Int? // Số lần sử dụng tối đa
+  usedCount     Int      @default(0)
+
+  // Thời gian
+  startDate DateTime
+  endDate   DateTime
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+  @@map("coupons")
+}
+
+// ============= REVIEW =============
+
+model Review {
+  id     String @id @default(cuid())
+  tourId String
+  tour   Tour   @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  rating  Int // 1-5 sao
+  comment String @db.Text
+
+  isApproved Boolean @default(false) // Cần duyệt trước khi hiển thị
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tourId])
+  @@index([userId])
+  @@index([isApproved])
+  @@map("reviews")
+}
+
+// ============= CMS =============
+
+enum ContentType {
+  BLOG // Bài viết blog
+  NEWS // Tin tức
+  GUIDE // Hướng dẫn du lịch
+}
+
+model Post {
+  id    String      @id @default(cuid())
+  title String
+  slug  String      @unique
+  type  ContentType @default(BLOG)
+
+  excerpt   String  @db.Text // Tóm tắt
+  content   String  @db.Text // Nội dung đầy đủ
+  thumbnail String?
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  viewCount   Int       @default(0)
+
+  authorId String? // ID nhân viên viết bài
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([type])
+  @@index([isPublished])
+  @@map("posts")
+}
+
+model Banner {
+  id          String  @id @default(cuid())
+  title       String
+  image       String // URL ảnh banner
+  link        String? // Link đến tour hoặc trang khác
+  description String?
+
+  displayOrder Int     @default(0) // Thứ tự hiển thị
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, displayOrder])
+  @@map("banners")
+}
+
+// ============= SYSTEM SETTINGS =============
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique // website_name, contact_email, etc
+  value String @db.Text
+
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}

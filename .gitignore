@@ -1,0 +1,28 @@
+node_modules
+
+# Keep environment variables out of version control
+.env*
+!.env.example
+
+# Build output
+/dist
+
+# Prisma generated files
+.prisma/
+generated/
+/src/generated/prisma
+
+# Ignore all .md files except README.md
+*.md
+!README.md
+!docs/swagger.md
+
+# Prisma seed output
+/prisma/seeds/index.ts
+
+
+
+API_Modules_Structure.md
+
+
+prisma.md
