@@ -54,29 +54,28 @@ if (config.NODE_ENV === 'development') {
 }
 
 // --- API Routes ---
-app.use('/api/v1', v1Routes);
+import { apiLimiter } from '@/middlewares/rateLimit.middleware';
+
+// Apply global rate limit to all API routes
+app.use('/api/v1', apiLimiter, v1Routes);
 
 // --- Error Handling ---
+// --- Error Handling ---
+import { errorConverter, errorHandler } from '@/middlewares/error.middleware';
+
 // Send back a 404 error for any unknown api request
 app.use((req, res, next) => {
   next(new ApiError(httpStatus.NOT_FOUND, 'Not found'));
 });
 
+// Convert error to ApiError, if needed
+app.use(errorConverter);
 
-const startServer = async () => {
-  try {
-    // Check database connection
-    await prisma.$connect();
-    console.log('[db]: Connected to database successfully.');
+// Handle error
+app.use(errorHandler);
 
-    app.listen(config.PORT, () => {
-      console.log(`[server]: Server is running at http://localhost:${config.PORT}`);
-      console.log(`[server]: Current environment: ${config.NODE_ENV}`);
-    });
-  } catch (error) {
-    console.error('[db]: Could not connect to the database.', error);
-    process.exit(1);
-  }
-};
 
-startServer();
+// Handle error
+app.use(errorHandler);
+
+export default app;

@@ -13,7 +13,10 @@ export const validate = (schema: ZodTypeAny) => async (req: Request, res: Respon
     next();
   } catch (error) {
     if (error instanceof ZodError) {
-      const errorMessages = error.issues.map((err) => `${err.path.join('.')}: ${err.message}`).join(', ');
+      const errorMessages = error.issues.map((err) => {
+        const path = err.path.join('.');
+        return `${path.replace('body.', '')}: ${err.message}`;
+      }).join(', ');
       return next(new ApiError(httpStatus.BAD_REQUEST, errorMessages));
     }
     next(error);

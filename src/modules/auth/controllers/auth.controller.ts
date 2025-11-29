@@ -123,4 +123,12 @@ export class AuthController {
       res.redirect(`${frontendUrl}/auth/callback?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`);
     }),
   ];
+
+  /**
+   * POST /api/v1/auth/logout
+   */
+  logout = catchAsync(async (req: Request, res: Response) => {
+    // The client is responsible for removing the token.
+    new ApiResponse(httpStatus.OK, 'Đăng xuất thành công').send(res);
+  });
 }
