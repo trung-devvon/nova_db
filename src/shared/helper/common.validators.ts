@@ -12,7 +12,7 @@ export const isUuid = z.string().refine(
 /**
  * Validate email format (basic but effective)
  */
-export const isEmail = z.string().refine(
+export const isEmail = z.string().min(1, 'Email is required').refine(
   (val) => /^\S+@\S+\.\S+$/.test(val.trim()),
   { message: 'Invalid email format' }
 );

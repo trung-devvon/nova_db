@@ -1,6 +1,14 @@
-import { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
+import { OpenAPIRegistry, extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi';
+import { z } from 'zod';
+
+extendZodWithOpenApi(z);
 
 export const registry = new OpenAPIRegistry();
 
-// The library will automatically register schemas used in `registerPath`.
-// Manual registration is only needed for advanced cases or schemas not directly used in a path.
+// Register Bearer Auth
+registry.registerComponent('securitySchemes', 'bearerAuth', {
+  type: 'http',
+  scheme: 'bearer',
+  bearerFormat: 'JWT',
+});
+

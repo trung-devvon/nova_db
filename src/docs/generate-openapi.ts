@@ -3,17 +3,18 @@ import { registry } from './openapi.registry';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 
-// Import all route files to ensure they are registered
-import '@/routes/v1';
+// Import module docs to register paths
+import '@/modules/auth/auth.docs';
+import '@/modules/users/users.docs';
 
 const generator = new OpenApiGeneratorV3(registry.definitions);
 
 const openapi = generator.generateDocument({
   openapi: '3.0.0',
   info: {
-    title: 'NOVA CRM API',
+    title: 'Nova Travel API',
     version: '1.0.0',
-    description: 'API documentation for the NOVA CRM application.',
+    description: 'API documentation for the Nova Travel application.',
   },
   servers: [{ url: '/api/v1' }],
 });

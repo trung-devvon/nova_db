@@ -36,20 +36,18 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- API Docs ---
+// --- Swagger UI ---
 if (config.NODE_ENV === 'development') {
   try {
     const openApiPath = path.resolve(process.cwd(), 'docs/api/openapi.yaml');
-    const file = fs.readFileSync(openApiPath, 'utf8');
-    const swaggerDocument = yaml.load(file);
-
-    if (typeof swaggerDocument === 'object' && swaggerDocument !== null) {
-      app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-    } else {
-      console.error('Failed to load a valid OpenAPI specification.');
+    if (fs.existsSync(openApiPath)) {
+      const file = fs.readFileSync(openApiPath, 'utf8');
+      const swaggerDocument = yaml.load(file);
+      app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument as any));
+      console.log('[server]: Swagger UI available at /api-docs');
     }
   } catch (error) {
-    console.error('Could not read or parse OpenAPI YAML file.', error);
+    console.error('[server]: Failed to load Swagger API documentation', error);
   }
 }
 

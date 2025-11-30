@@ -47,7 +47,9 @@ export class AuthService {
         },
       });
 
-      await mailService.sendOtpEmail(data.email, otpCode, data.name);
+      mailService.sendOtpEmail(data.email, otpCode, data.name).catch((err) => {
+        console.error('[mail]: Failed to send OTP email', err);
+      });
 
       return {
         user: {
@@ -77,7 +79,9 @@ export class AuthService {
     });
 
     // Send OTP email
-    await mailService.sendOtpEmail(data.email, otpCode, data.name);
+    mailService.sendOtpEmail(data.email, otpCode, data.name).catch((err) => {
+      console.error('[mail]: Failed to send OTP email', err);
+    });
 
     return {
       user: {
@@ -161,7 +165,9 @@ export class AuthService {
       },
     });
 
-    await mailService.sendOtpEmail(email, otpCode, user.name || undefined);
+    mailService.sendOtpEmail(email, otpCode, user.name || undefined).catch((err) => {
+      console.error('[mail]: Failed to send OTP email', err);
+    });
 
     return {
       message: 'Mã OTP đã được gửi lại. Vui lòng kiểm tra email.',
@@ -272,7 +278,9 @@ export class AuthService {
       },
     });
 
-    await mailService.sendResetPasswordEmail(email, otpCode, user.name || undefined);
+    mailService.sendResetPasswordEmail(email, otpCode, user.name || undefined).catch((err) => {
+      console.error('[mail]: Failed to send reset password email', err);
+    });
 
     return {
       message: 'Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra email.',

@@ -13,7 +13,7 @@ export const apiLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   message: {
     code: httpStatus.TOO_MANY_REQUESTS,
-    message: 'Quá nhiều yêu cầu từ IP này, vui lòng thử lại sau 15 phút.',
+    message: 'Too many requests, please try again after 15 minutes.',
   },
 });
 
@@ -29,6 +29,6 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
   message: {
     code: httpStatus.TOO_MANY_REQUESTS,
-    message: 'Quá nhiều lần thử đăng nhập/đăng ký. Vui lòng thử lại sau 15 phút.',
+    message: 'Too many requests, please try again after 15 minutes.',
   },
 });

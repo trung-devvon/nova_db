@@ -1,19 +1,182 @@
 openapi: 3.0.0
 info:
-  title: NOVA CRM API
+  title: Nova Travel API
   version: 1.0.0
-  description: API documentation for the NOVA CRM application.
+  description: API documentation for the Nova Travel application.
 servers:
   - url: /api/v1
 components:
-  schemas: {}
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    RegisterInput:
+      type: object
+      properties:
+        body:
+          type: object
+          properties:
+            email:
+              type: string
+              minLength: 1
+            password:
+              type: string
+              minLength: 6
+              maxLength: 20
+            name:
+              type: string
+              minLength: 2
+            phone:
+              type: string
+              pattern: ^[0-9]{10,11}$
+          required:
+            - email
+            - password
+          additionalProperties: false
+      required:
+        - body
+    LoginInput:
+      type: object
+      properties:
+        body:
+          type: object
+          properties:
+            email:
+              type: string
+              minLength: 1
+            password:
+              type: string
+              minLength: 1
+          required:
+            - email
+            - password
+          additionalProperties: false
+      required:
+        - body
+    VerifyOtpInput:
+      type: object
+      properties:
+        body:
+          type: object
+          properties:
+            email:
+              type: string
+              minLength: 1
+            otpCode:
+              type: string
+              minLength: 6
+              maxLength: 6
+          required:
+            - email
+            - otpCode
+          additionalProperties: false
+      required:
+        - body
+    ResendOtpInput:
+      type: object
+      properties:
+        body:
+          type: object
+          properties:
+            email:
+              type: string
+              minLength: 1
+          required:
+            - email
+          additionalProperties: false
+      required:
+        - body
+    RefreshTokenInput:
+      type: object
+      properties:
+        body:
+          type: object
+          properties:
+            refreshToken:
+              type: string
+              minLength: 1
+          required:
+            - refreshToken
+          additionalProperties: false
+      required:
+        - body
+    ForgotPasswordInput:
+      type: object
+      properties:
+        body:
+          type: object
+          properties:
+            email:
+              type: string
+              minLength: 1
+          required:
+            - email
+          additionalProperties: false
+      required:
+        - body
+    ResetPasswordInput:
+      type: object
+      properties:
+        body:
+          type: object
+          properties:
+            email:
+              type: string
+              minLength: 1
+            otpCode:
+              type: string
+              minLength: 6
+              maxLength: 6
+            newPassword:
+              type: string
+              minLength: 6
+              maxLength: 20
+          required:
+            - email
+            - otpCode
+            - newPassword
+          additionalProperties: false
+      required:
+        - body
+    GetUsersQuery:
+      type: object
+      properties:
+        query:
+          type: object
+          properties:
+            page:
+              type: string
+              pattern: ^\d+$
+            limit:
+              type: string
+              pattern: ^\d+$
+            search:
+              type: string
+            role:
+              type: string
+              enum:
+                - CUSTOMER
+                - SALES
+                - ADMIN
+            sortBy:
+              type: string
+            sortOrder:
+              type: string
+              enum:
+                - asc
+                - desc
+          additionalProperties: false
+      required:
+        - query
   parameters: {}
 paths:
-  /api/v1/auth/register:
+  /auth/register:
     post:
-      summary: Register a new user
       tags:
         - Auth
+      summary: Register a new user
       requestBody:
         content:
           application/json:
@@ -22,93 +185,33 @@ paths:
               properties:
                 email:
                   type: string
+                  minLength: 1
                 password:
                   type: string
-                  minLength: 8
+                  minLength: 6
+                  maxLength: 20
                 name:
                   type: string
-                  minLength: 1
+                  minLength: 2
+                phone:
+                  type: string
+                  pattern: ^[0-9]{10,11}$
               required:
                 - email
                 - password
-                - name
+              additionalProperties: false
       responses:
         '201':
-          description: User created successfully
+          description: User registered successfully
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  data:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                      name:
-                        type: string
-                      email:
-                        type: string
-                        format: email
-                      created_at:
-                        type: string
-                        format: date
-                    required:
-                      - id
-                      - name
-                      - email
-                      - created_at
-                required:
-                  - data
-        '409':
-          description: Email already taken
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    enum:
-                      - false
                   code:
                     type: number
-                    enum:
-                      - 409
                   message:
                     type: string
-                required:
-                  - success
-                  - code
-                  - message
-  /api/v1/auth/login:
-    post:
-      summary: Log in a user
-      tags:
-        - Auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                password:
-                  type: string
-                  minLength: 1
-              required:
-                - email
-                - password
-      responses:
-        '200':
-          description: Login successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
                   data:
                     type: object
                     properties:
@@ -117,50 +220,334 @@ paths:
                         properties:
                           id:
                             type: string
-                            format: uuid
-                          name:
-                            type: string
                           email:
                             type: string
-                            format: email
-                          created_at:
-                            type: string
-                            format: date
                         required:
                           - id
-                          - name
                           - email
-                          - created_at
-                      tokens:
-                        type: object
-                        properties:
-                          accessToken:
-                            type: string
-                        required:
-                          - accessToken
                     required:
                       - user
-                      - tokens
                 required:
+                  - code
+                  - message
                   - data
-        '401':
-          description: Incorrect email or password
+        '400':
+          description: Validation error
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  minLength: 1
+                password:
+                  type: string
+                  minLength: 1
+              required:
+                - email
+                - password
+              additionalProperties: false
+      responses:
+        '200':
+          description: Login successfully
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  success:
-                    type: boolean
-                    enum:
-                      - false
                   code:
                     type: number
-                    enum:
-                      - 401
                   message:
                     type: string
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          email:
+                            type: string
+                        required:
+                          - id
+                          - email
+                      tokens:
+                        type: object
+                        properties:
+                          accessToken:
+                            type: string
+                          refreshToken:
+                            type: string
+                        required:
+                          - accessToken
+                          - refreshToken
+                    required:
+                      - user
+                      - tokens
                 required:
-                  - success
                   - code
                   - message
+                  - data
+        '401':
+          description: Invalid credentials
+  /auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: Logout user
+      responses:
+        '200':
+          description: Logout successfully
+  /auth/verify-otp:
+    post:
+      tags:
+        - Auth
+      summary: Verify OTP
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  minLength: 1
+                otpCode:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+              required:
+                - email
+                - otpCode
+              additionalProperties: false
+      responses:
+        '200':
+          description: OTP verified successfully
+        '400':
+          description: Invalid or expired OTP
+  /auth/resend-otp:
+    post:
+      tags:
+        - Auth
+      summary: Resend OTP
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  minLength: 1
+              required:
+                - email
+              additionalProperties: false
+      responses:
+        '200':
+          description: OTP resent successfully
+  /auth/refresh-token:
+    post:
+      tags:
+        - Auth
+      summary: Refresh access token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+                  minLength: 1
+              required:
+                - refreshToken
+              additionalProperties: false
+      responses:
+        '200':
+          description: Token refreshed successfully
+  /auth/forgot-password:
+    post:
+      tags:
+        - Auth
+      summary: Request password reset
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  minLength: 1
+              required:
+                - email
+              additionalProperties: false
+      responses:
+        '200':
+          description: OTP sent to email
+  /auth/reset-password:
+    post:
+      tags:
+        - Auth
+      summary: Reset password with OTP
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  minLength: 1
+                otpCode:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                newPassword:
+                  type: string
+                  minLength: 6
+                  maxLength: 20
+              required:
+                - email
+                - otpCode
+                - newPassword
+              additionalProperties: false
+      responses:
+        '200':
+          description: Password reset successfully
+  /auth/profile:
+    get:
+      tags:
+        - Auth
+      summary: Get current user profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved successfully
+        '401':
+          description: Unauthorized
+  /users:
+    get:
+      tags:
+        - Users
+      summary: Get all users (Admin/Sales)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            pattern: ^\d+$
+          required: false
+          name: page
+          in: query
+        - schema:
+            type: string
+            pattern: ^\d+$
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: search
+          in: query
+        - schema:
+            type: string
+            enum:
+              - CUSTOMER
+              - SALES
+              - ADMIN
+          required: false
+          name: role
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: sortBy
+          in: query
+        - schema:
+            type: string
+            enum:
+              - asc
+              - desc
+          required: false
+          name: sortOrder
+          in: query
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      users:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            email:
+                              type: string
+                            name:
+                              type: string
+                              nullable: true
+                            role:
+                              type: string
+                          required:
+                            - id
+                            - email
+                            - name
+                            - role
+                      pagination:
+                        type: object
+                        properties:
+                          page:
+                            type: number
+                          limit:
+                            type: number
+                          total:
+                            type: number
+                          totalPages:
+                            type: number
+                        required:
+                          - page
+                          - limit
+                          - total
+                          - totalPages
+                    required:
+                      - users
+                      - pagination
+                required:
+                  - code
+                  - message
+                  - data
+        '403':
+          description: Forbidden
+  /users/profile:
+    get:
+      tags:
+        - Users
+      summary: Get current user profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile retrieved successfully
